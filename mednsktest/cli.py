@@ -8,11 +8,15 @@ from mednsktest.toolbox import *
 
 def main():
 
-    question_files = [f.strip('.txt') for f in os.listdir(BASE_PATH) if os.path.splitext(os.path.join(BASE_PATH, f))[-1] == '.txt']
+    question_files = sorted((
+        f.strip('.txt') for f in os.listdir(PATH_REPO)
+        if os.path.splitext(os.path.join(PATH_REPO, f))[-1] == '.txt'), reverse=True)
 
     arg_parser = argparse.ArgumentParser(
         prog='mednsktest',
-        description='Тесты с курсов НГМУ. Консольное приложение\nИмеющиеся вопросники:\n%s' % question_files)
+        description=(
+                'Тесты с курсов НГМУ. Консольное приложение\n\n'
+                'Имеющиеся вопросники:\n%s' % ' '.join(question_files)))
 
     arg_parser.add_argument('filename', help='Имя вопросника (файла с вопросами без расширения .txt)')
     arg_parser.add_argument('--questions_limit', help='Ограничение количества вопросов на сеанс', default=50)
@@ -23,7 +27,7 @@ def main():
 
     questions_limit = int(parsed_args.questions_limit)
 
-    questions = get_question_from_file(os.path.join(BASE_PATH, '%s.txt' % parsed_args.filename))
+    questions = get_question_from_file(os.path.join(PATH_REPO, '%s.txt' % parsed_args.filename))
     shuffle(questions)
     questions = questions[:questions_limit]
 

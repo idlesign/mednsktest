@@ -7,9 +7,13 @@ import re
 from random import shuffle, choice
 
 
-BASE_PATH = os.path.dirname(__file__)
+PATH_REPO = os.path.join(os.path.dirname(__file__), 'repo')
 
-RE_QUESTION = re.compile('(?P<question_num>[^\n]+)\n(?P<question>[^#]+)\n#Варианты к вопросу[^\n]+\n(?P<answers>[^#]+)\n#Ответ(?P<answer_num>[^\n]+)\n', re.U)
+RE_QUESTION = re.compile(
+    '(?P<question_num>[^\n]+)\n(?P<question>[^#]+)\n'
+    '#Варианты к вопросу[^\n]+\n(?P<answers>[^#]+)\n'
+    '#Ответ(?P<answer_num>[^\n]+)\n', re.U)
+
 RE_QUESTION_BOUNDARY = re.compile('#Вопрос', re.U)
 RE_ANSWER = re.compile('[^\d]{0,1}(\d+)\.(.+)', re.U | re.M)
 

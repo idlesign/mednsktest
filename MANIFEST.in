@@ -4,8 +4,7 @@ include INSTALL
 include LICENSE
 include README.rst
 
-recursive-include bin *
-recursive-include * *.txt
+recursive-include mednsktest *.txt
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
