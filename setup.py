@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import io
 import os
 import re
@@ -38,6 +39,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
 
+    extras_require={
+        'cli': ['click>=2.0'],
+    },
     install_requires=[],
     entry_points={
         'console_scripts': ['mednsktest = mednsktest.cli:main'],
