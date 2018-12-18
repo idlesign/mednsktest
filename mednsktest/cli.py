@@ -5,6 +5,7 @@ from mednsktest import VERSION_STR
 
 import os
 import re
+import json
 
 from random import shuffle, choice
 
@@ -75,7 +76,7 @@ def process_question(question_data, shuffle_answers=False):
         shuffle(question_data_answers)
 
     answers = []
-    variants = map(lambda x: str(x), range(1, len(question_data_answers) + 1))
+    variants = list(map(lambda x: str(x), range(1, len(question_data_answers) + 1)))
     right_answer_idx = None
 
     for idx, ans in enumerate(question_data_answers):
@@ -83,17 +84,16 @@ def process_question(question_data, shuffle_answers=False):
         if ans[1]:
             right_answer_idx = idx
 
-    def get_input():
-        question_text = '%s:\n%s\n> ' % (question_data['question'], '\n'.join(answers))
+    def get_input(question_text):
         user_input = click.prompt(question_text)
 
         if user_input not in variants:
             click.secho('Нужно выбрать один из следующих вариантов: %s.\n' % ', '.join(variants), fg='red')
-            return get_input()
+            return get_input('')
 
         return user_input
 
-    inp = get_input()
+    inp = get_input('%s:\n%s\n> ' % (question_data['question'], '\n'.join(answers)))
 
     text_cool = [
         'Обалдеть',
@@ -123,6 +123,8 @@ def process_question(question_data, shuffle_answers=False):
 def process_questions(questions, shuffle_answers=False):
     """Запускает процедуру опроса пользователя по указанным вопросам."""
     failures = []
+    successes = []
+
     total = len(questions)
 
     for idx, question_data in enumerate(questions, 1):
@@ -132,10 +134,9 @@ def process_questions(questions, shuffle_answers=False):
 
         click.secho(msg, fg='green' if success else 'red')
 
-        if not success:
-            failures.append(question_data)
+        (successes if success else failures).append(question_data)
 
-    return failures
+    return successes, failures
 
 
 def get_repo_filenames():
@@ -148,41 +149,106 @@ def get_repo_filenames():
 REPO_FILENAMES = get_repo_filenames()
 
 
+class Store(object):
+
+    def __init__(self, repo_name):
+        self.path = os.path.join(os.path.abspath(os.getcwd()), 'mednsktest_%s.tmp' % repo_name)
+        self.success = []
+        self.fail = []
+
+    def filter_questions(self, questions):
+        seen = set(self.success + self.fail)
+
+        questions_ = []
+
+        for question in questions:
+            if question['question_num'] in seen:
+                continue
+            questions_.append(question)
+
+        return questions_
+
+    def load(self):
+        path = self.path
+
+        if not os.path.isfile(path):
+            return
+
+        with open(path) as f:
+            data = json.loads(f.read())
+
+        self.success = data['success']
+        self.fail = data['fail']
+
+    def contribute(self, successes, failures):
+
+        def extend(container, questions):
+            container.extend([question['question_num'] for question in questions])
+
+        extend(self.success, successes)
+        extend(self.fail, failures)
+
+    def save(self):
+        with open(self.path, 'w') as f:
+            f.write(json.dumps({
+                'success': list(set(self.success)),
+                'fail': list(set(self.fail)),
+            }))
+
+
 @click.group()
 @click.version_option(version=VERSION_STR)
 def base():
     """Тесты с курсов НГМУ. Консольное приложение."""
 
 
-# 'Имя вопросника (файла с вопросами без расширения .txt)'
 @base.command()
 @click.argument('filename', type=click.Choice(REPO_FILENAMES), default=REPO_FILENAMES[0])
-@click.option('--questions_limit', help='Ограничение количества вопросов на сеанс', type=int, default=50)
-@click.option('--shuffle_answers', help='Если флаг задан, ответы будут перетасованы')
-def start(filename, questions_limit, shuffle_answers):
+@click.option(
+    '--questions_limit', help='Ограничение количества вопросов на сеанс', type=int, default=50)
+@click.option(
+    '--shuffle_answers', help='Если флаг задан, ответы будут перетасованы', is_flag=True)
+@click.option(
+    '--save', help='Сохранить прогресс тестирования (не задавать вопросы из предыдущих сессий)', is_flag=True)
+def start(filename, questions_limit, shuffle_answers, save):
     """Стартует опрос."""
+
+    def print_summary(total, failures):
+        num_fail = len(failures)
+        num_success = (total - num_fail)
+        rate = round(num_success * 100 / total)
+
+        click.secho('\n==============================\nИтого:\n  всего вопросов - %s' % total)
+        click.secho('  верных ответов - %s' % num_success, fg='green')
+        click.secho('  ошибок - %s' % num_fail, fg='red')
+        click.secho('  успешность - %s%%' % rate, fg='cyan')
+
+    def process_failures(failures):
+        # Повторим вопросы с ошибками.
+        if not failures:
+            return
+        click.secho('\n\nПочти закончили, но теперь повторим вопросы с ошибками:', fg='magenta')
+        process_questions(failures)
+
+    store = Store(filename)
+    store.load()
 
     questions = get_question_from_file(os.path.join(PATH_REPO, '%s.txt' % filename))
     shuffle(questions)
+
+    questions = store.filter_questions(questions)
+
     questions = questions[:questions_limit]
 
-    failures = process_questions(questions, shuffle_answers=shuffle_answers)
+    successes, failures = process_questions(questions, shuffle_answers=shuffle_answers)
 
-    #'black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'reset'
+    process_failures(failures)
 
-    # Повторим вопросы с ошибками.
-    if failures:
-        click.secho('\n\nПочти закончили, но теперь повторим вопросы с ошибками:\n', fg='magenta')
-        process_questions(failures)
+    print_summary(questions_limit, failures)
 
-    num_fail = len(failures)
-    num_success = (questions_limit-num_fail)
-    rate = round(num_success*100 / questions_limit)
-
-    click.secho('\n==============================\nИтого:\n  всего вопросов - %s' % questions_limit)
-    click.secho('  верных ответов - %s' % num_success, fg='green')
-    click.secho('  ошибок - %s' % num_fail, fg='red')
-    click.secho('  успешность - %s%%' % rate, fg='cyan')
+    if save:
+        store.contribute(successes, failures)
+        store.save()
 
 
 def main():
