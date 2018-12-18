@@ -217,7 +217,7 @@ def base():
 @click.option(
     '--ashuffle', help=help('Если флаг задан, ответы будут перетасованы'), is_flag=True)
 @click.option(
-    '--save', help=help('Сохранить прогресс тестирования (не задавать вопросы из предыдущих сессий)'), is_flag=True)
+    '--save', help=help('Сохранить прогресс тестирования (не задавать вопросы из предыдущих сеансов)'), is_flag=True)
 def start(filename, qlimit, ashuffle, save):
     """Стартует опрос."""
 
@@ -242,9 +242,15 @@ def start(filename, qlimit, ashuffle, save):
     store.load()
 
     questions = get_question_from_file(os.path.join(PATH_REPO, '%s.txt' % filename))
+
     shuffle(questions)
 
     questions = store.filter_questions(questions)
+
+    if save:
+        click.secho('Используются данные предыдущих сеансов из %s' % store.path, fg='blue')
+
+    click.secho('Возможных вопросов: %s' % len(questions), fg='cyan')
 
     questions = questions[:qlimit]
 
