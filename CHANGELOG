@@ -4,6 +4,7 @@ mednsktest changelog
 
 Unreleased
 ----------
+! Упрощены наименования опций: questions_limit -> qlimit shuffle_answers -> ashuffle.
 + Добавлены тест УЗД на декабрь 2018.
 + Команда 'start' теперь принимает опцию --save.
 + Переход на использование click.

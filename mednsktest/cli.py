@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
+import json
+import os
+import re
+import sys
+from random import shuffle, choice
+
 import click
 
 from mednsktest import VERSION_STR
 
-import os
-import re
-import json
-
-from random import shuffle, choice
+PY3 = sys.version_info[0] == 3
 
 PATH_REPO = os.path.join(os.path.dirname(__file__), 'repo')
 
@@ -196,6 +198,12 @@ class Store(object):
             }))
 
 
+def help(val):
+    if PY3:
+        return val
+    return val.decode('utf-8')
+
+
 @click.group()
 @click.version_option(version=VERSION_STR)
 def base():
@@ -205,12 +213,12 @@ def base():
 @base.command()
 @click.argument('filename', type=click.Choice(REPO_FILENAMES), default=REPO_FILENAMES[0])
 @click.option(
-    '--questions_limit', help='Ограничение количества вопросов на сеанс', type=int, default=50)
+    '--qlimit', help=help('Ограничение количества вопросов на сеанс'), type=int, default=50)
 @click.option(
-    '--shuffle_answers', help='Если флаг задан, ответы будут перетасованы', is_flag=True)
+    '--ashuffle', help=help('Если флаг задан, ответы будут перетасованы'), is_flag=True)
 @click.option(
-    '--save', help='Сохранить прогресс тестирования (не задавать вопросы из предыдущих сессий)', is_flag=True)
-def start(filename, questions_limit, shuffle_answers, save):
+    '--save', help=help('Сохранить прогресс тестирования (не задавать вопросы из предыдущих сессий)'), is_flag=True)
+def start(filename, qlimit, ashuffle, save):
     """Стартует опрос."""
 
     def print_summary(total, failures):
@@ -238,13 +246,13 @@ def start(filename, questions_limit, shuffle_answers, save):
 
     questions = store.filter_questions(questions)
 
-    questions = questions[:questions_limit]
+    questions = questions[:qlimit]
 
-    successes, failures = process_questions(questions, shuffle_answers=shuffle_answers)
+    successes, failures = process_questions(questions, shuffle_answers=ashuffle)
 
     process_failures(failures)
 
-    print_summary(questions_limit, failures)
+    print_summary(qlimit, failures)
 
     if save:
         store.contribute(successes, failures)
