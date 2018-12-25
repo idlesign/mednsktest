@@ -2,8 +2,8 @@ mednsktest changelog
 ====================
 
 
-Unreleased
-----------
+v0.2.0
+------
 ! Упрощены наименования опций: questions_limit -> qlimit shuffle_answers -> ashuffle.
 + Добавлены тест УЗД на декабрь 2018.
 + Команда 'start' теперь принимает опцию --save.
